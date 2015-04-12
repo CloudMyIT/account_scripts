@@ -1,15 +1,164 @@
-param([String]$FirstName = "First")
-param([String]$MiddleInital = "M")
-param([String]$LastName = "Last")
-param([String]$SAMName = "fmlast")
-param([String]$OtherName = "NickName")
-param([String]$OU = "OU=user,OU=accounts,DC=cloudmy,DC=it")
-param([String]$Domain = "cloudmy.it")
-param([String]$TempPass = "P@22word")
-param([String]$Quota = "NONE")
+#* FileName: CreateUser.ps1
+#*=============================================================================
+#* Script Name: [CMIT Create User]
+#* Created: [12APR15]
+#* Author: Will G
+#* Company: CloudMy.IT LLC
+#* Web: http://www.cloudmy.it
+#* Reqrmnts:
+#* Keywords:
+#*=============================================================================
+#* Purpose: To automate the process of creating users
+#*=============================================================================
+#*=============================================================================
+#* REVISION HISTORY
+#*=============================================================================
+#* Date: 
+#* Time: 
+#* Issue:
+#* Solution:
+#*
+#*=============================================================================
 
+#REQUIRED TO BE PASSED
+param([String]$FirstName = "First")
+param([String]$MiddleInital = "Middle")
+param([String]$LastName = "Last")
+param([String]$OtherName = "NickName")
+param([String]$TempPass = "P@22word")
+#OPTIONAL TO BE PASSED
+param([String]$Domain = "cloudmy.it")
+param([String]$OU = "OU=user,OU=accounts,DC=cloudmy,DC=it")
+param([String]$Quota = "NONE")
+param([String]$SAMName = "fmlast")
+
+#This would be the Account that will create the New User
 #$AdminCredentials = Get-Credential "$Domain\SERVICE_ACCT"
 
+#*=============================================================================
+#* FUNCTION LISTINGS
+#*=============================================================================
+# Function: checkExistance
+# Created: [12APR15]
+# Author: Will G
+# Arguments: SamAccountName
+# Purpose: Check to see if a user with that username already exists in AD
+#*=============================================================================
+Function checkExistance($SAM)
+{
+	$User = Get-ADUser -Filter {sAMAccountName -eq $SAM}
+	If ($User -eq $Null) 
+	{
+		return $TRUE
+	}
+	Else
+	{
+		return $FALSE
+	}
+}
+
+#*=============================================================================
+#* FUNCTION LISTINGS
+#*=============================================================================
+# Function: generateHomeFolder
+# Created: [12APR15]
+# Author: Will G
+# Arguments: 
+# Purpose: Figure out where the users HomeFolder should be located
+#*=============================================================================
+Function generateHomeFolder()
+{
+	#TODO
+	return "\\$Domain\profiles\$Quota\$SAMName"
+}
+
+#*=============================================================================
+#* FUNCTION LISTINGS
+#*=============================================================================
+# Function: generateSam
+# Created: [12APR15]
+# Author: Will G
+# Arguments: FirstName, MiddleName, LastName
+# Purpose: Automatically generate the SamAccountName for a user based on our naming standard
+#*=============================================================================
+Function generateSam($First, $Middle, $Last)
+{
+	If($SAMName -ne "fmlast")
+	{
+		return $SAMName
+	}
+	Else
+	{
+		#TODO GENERATE SAM
+		return "fmlast"
+	}
+}
+
+#*=============================================================================
+#* FUNCTION LISTINGS
+#*=============================================================================
+# Function: generateFullName
+# Created: [12APR15]
+# Author: Will G
+# Arguments: FirstName, MiddleName, LastName
+# Purpose: Automatically generate the Display Name, and Full Name based on our naming standard
+#*=============================================================================
+Function generateFullName($First, $Middle, $Last)
+{
+	#TODO
+	return "First M. Last"
+}
+
+#*=============================================================================
+#* FUNCTION LISTINGS
+#*=============================================================================
+# Function: checkInput
+# Created: [12APR15]
+# Author: Will G
+# Arguments: 
+# Purpose: Check to ensure we have all the information we need to create the user
+# =============================================================================
+Function checkInput()
+{
+	If($firstName -eq "First")
+	{
+		return $FALSE
+	}
+	If($MiddleInital -eq "Middle")
+	{
+		$MiddleInital=""
+	}
+	If($LastName -eq "Last")
+	{
+		return $FALSE
+	}
+	If($OtherName -eq "NickName")
+	{
+		return $FALSE
+	}
+	If($OtherName -eq "NickName")
+	{
+		return $FALSE
+	}
+	If($TempPass -eq "P@22word")
+	{
+		return $FALSE
+	}
+	return $TRUE
+}
+
+#*=============================================================================
+#* SCRIPT BODY
+#*=============================================================================
+
+#Generate additional information
+$HomeFolder = generateHomeFolder()
+$SAMName=generateSam($FirstName,$MiddleInital,$LastName)
+$FullName=generateFullName($FirstName,$MiddleInital,$LastName)
+
+#*=============================================================================
+#* Create User Account
+#*=============================================================================
 $NewUser = New-ADUser `
 	-GivenName $FirstName `
 	-Initials $MiddleInital `
@@ -18,8 +167,8 @@ $NewUser = New-ADUser `
 	-DisplayName "$FirstName $MiddleInital. $LastName" `
 	-OtherName $OtherName `
 	-SamAccountName $SAMName `
-	-HomeDirectory "\\$Domain\profiles\$Quota\$SAMName" `
-	-ProfilePath "\\$Domain\profiles\$Quota\$SAMName\_sys\$SAMName.pds" `
+	-HomeDirectory "$HomeFolder" `
+	-ProfilePath "$HomeFolder\_sys\$SAMName.pds" `
 	-HomeDrive "U:" `
 	-Path $OU `
 	-AccountPassword (Read-Host -AsSecureString $TempPass) `
@@ -33,12 +182,15 @@ $NewUser = New-ADUser `
 	-SmartcardLogonRequired $false `
 	-TrustedForDelegation $false `
 	-Type "User"
-	
+
+#TODO Add these into the account creation process
 #-AccountExpirationDate <System.NullableSystem.DateTime> `
 #-Credential $AdminCredentials `
 
 
- 
+#*=============================================================================
+#* Create Home Folder, Set Permissions
+#*=============================================================================
 #Define FileSystemAccessRights:identifies what type of access we are defining, whether it is Full Access, Read, Write, Modify 
 $FileSystemAccessRights = [System.Security.AccessControl.FileSystemRights]"FullControl" 
  
@@ -59,7 +211,7 @@ $NewAccessrule = New-Object System.Security.AccessControl.FileSystemAccessRule `
  
 #set acl for each user folder
 #First, define the folder for each user 
-$userfolder = "\\$Domain\profiles\$Quota\$SAMName"
+$userfolder = "$HomeFolder"
 
 #Get the current ACL for the folder
 $currentACL = Get-ACL -path $userfolder 
@@ -68,4 +220,7 @@ $currentACL = Get-ACL -path $userfolder
 $currentACL.SetAccessRule($NewAccessrule) 
 
 #Write the changes to the user folder 
-Set-ACL -path $userfolder -AclObject $currentACL 
+Set-ACL -path $userfolder -AclObject $currentACL
+#*=============================================================================
+#* END OF SCRIPT: CMIT Create User
+#*=============================================================================
