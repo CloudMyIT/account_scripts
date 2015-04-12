@@ -1,11 +1,11 @@
-$FirstName = "First"
-$MiddleInital = "M"
-$LastName = "Last"
-$SAMName = "fmlast"
-$OtherName = "NickName"
-$OU = "OU=user,OU=accounts,DC=example,DC=com"
-$Domain = "example.com"
-$TempPass = "P@22word"
+param([String]$FirstName = "First")
+param([String]$MiddleInital = "M")
+param([String]$LastName = "Last")
+param([String]$SAMName = "fmlast")
+param([String]$OtherName = "NickName")
+param([String]$OU = "OU=user,OU=accounts,DC=example,DC=com")
+param([String]$Domain = "example.com")
+param([String]$TempPass = "P@22word")
 
 #$AdminCredentials = Get-Credential "$Domain\SERVICE_ACCT"
 
