@@ -3,9 +3,10 @@ param([String]$MiddleInital = "M")
 param([String]$LastName = "Last")
 param([String]$SAMName = "fmlast")
 param([String]$OtherName = "NickName")
-param([String]$OU = "OU=user,OU=accounts,DC=example,DC=com")
-param([String]$Domain = "example.com")
+param([String]$OU = "OU=user,OU=accounts,DC=cloudmy,DC=it")
+param([String]$Domain = "cloudmy.it")
 param([String]$TempPass = "P@22word")
+param([String]$Quota = "NONE")
 
 #$AdminCredentials = Get-Credential "$Domain\SERVICE_ACCT"
 
@@ -17,8 +18,8 @@ $NewUser = New-ADUser `
 	-DisplayName "$FirstName $MiddleInital. $LastName" `
 	-OtherName $OtherName `
 	-SamAccountName $SAMName `
-	-HomeDirectory "\\$Domain\profiles\$SAMName" `
-	-ProfilePath "\\$Domain\profiles\$SAMName\_sys\$SAMName.pds" `
+	-HomeDirectory "\\$Domain\profiles\$Quota\$SAMName" `
+	-ProfilePath "\\$Domain\profiles\$Quota\$SAMName\_sys\$SAMName.pds" `
 	-HomeDrive "U:" `
 	-Path $OU `
 	-AccountPassword (Read-Host -AsSecureString $TempPass) `
@@ -58,7 +59,7 @@ $NewAccessrule = New-Object System.Security.AccessControl.FileSystemAccessRule `
  
 #set acl for each user folder
 #First, define the folder for each user 
-$userfolder = "\\$Domain\profiles\$SAMName"
+$userfolder = "\\$Domain\profiles\$Quota\$SAMName"
 
 #Get the current ACL for the folder
 $currentACL = Get-ACL -path $userfolder 
