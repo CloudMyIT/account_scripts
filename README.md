@@ -10,11 +10,11 @@ To assist in the setup, we will assume all DFS shared folders are located in the
 
 ###Profiles
 First we will create the Profiles Folder. This will be used to store al of the users files.
-1) Create a new Directory named profiles.
-2) Change the NTFS security permissions and set it so ONLY "SYSTEM" and "Domain Admins" have "FULL CONTROL"
-3) Add this folder to the DFS Share.
-4) Set the share permissions so ONLY "Authenticated Users" has "FULL CONTROL"
+1. Create a new Directory named profiles.
+2. Change the NTFS security permissions and set it so ONLY "SYSTEM" and "Domain Admins" have "FULL CONTROL"
+3. Add this folder to the DFS Share.
+4. Set the share permissions so ONLY "Authenticated Users" has "FULL CONTROL"
 ####Optional Quota Setup
 We need to manage the space our Clients have, so we setup some additional folders.
-5) Create the folders with the following names: "1G, 2G, 5G, 10G, 15G, 20G, 25G, 50G, 100G, NONE"
-6) For each of the above folders create a corosponding quota, ensuring your select "Auto apply template and create quotas on existing and new subfolders"
+5. Create the folders with the following names: "1G, 2G, 5G, 10G, 15G, 20G, 25G, 50G, 100G, NONE"
+6. For each of the above folders create a corosponding quota, ensuring your select "Auto apply template and create quotas on existing and new subfolders"
