@@ -2,6 +2,7 @@
 #*=============================================================================
 #* Script Name: [CMIT Create User]
 #* Created: [12APR15]
+#* Version: 0.1
 #* Author: Will G
 #* Company: CloudMy.IT LLC
 #* Web: http://www.cloudmy.it
