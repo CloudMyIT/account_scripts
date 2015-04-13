@@ -22,14 +22,14 @@
 
 #REQUIRED TO BE PASSED
 param([String]$FirstName = "First")
-param([String]$MiddleInital = "Middle")
+param([String]$MiddleName = "Middle")
 param([String]$LastName = "Last")
 param([String]$OtherName = "NickName")
 param([String]$TempPass = "P@22word")
-#OPTIONAL TO BE PASSED
+#OPTIONAL TO BE PASSED We Assume you don't know about them...
 param([String]$Domain = "cloudmy.it")
 param([String]$OU = "OU=user,OU=accounts,DC=cloudmy,DC=it")
-param([String]$Quota = "NONE")
+param([String]$Quota = "NULL")
 param([String]$SAMName = "fmlast")
 
 #This would be the Account that will create the New User
@@ -49,11 +49,13 @@ Function checkExistance($SAM)
 	$User = Get-ADUser -Filter {sAMAccountName -eq $SAM}
 	If ($User -eq $Null) 
 	{
-		return $TRUE
+		#User Doesn't Exist
+		return $FALSE
 	}
 	Else
 	{
-		return $FALSE
+		#User Exists
+		return $TRUE
 	}
 }
 
@@ -68,8 +70,21 @@ Function checkExistance($SAM)
 #*=============================================================================
 Function generateHomeFolder()
 {
-	#TODO
-	return "\\$Domain\profiles\$Quota\$SAMName"
+	If ($global:Quota -eq "NULL")
+	{
+		return "\\$global:Domain\profiles\$global:SAMName"
+	}
+	Else
+	{
+		If (Test-Path "\\$global:Domain\profiles\$global:Quota" -PathType Container )
+		{
+			return "\\$global:Domain\profiles\$global:Quota\$global:SAMName"
+		}
+		Else
+		{
+			return "\\$global:Domain\profiles\$global:SAMName"
+		}
+	}
 }
 
 #*=============================================================================
@@ -78,19 +93,26 @@ Function generateHomeFolder()
 # Function: generateSam
 # Created: [12APR15]
 # Author: Will G
-# Arguments: FirstName, MiddleName, LastName
+# Arguments: None
 # Purpose: Automatically generate the SamAccountName for a user based on our naming standard
 #*=============================================================================
-Function generateSam($First, $Middle, $Last)
+Function generateSam($x=0)
 {
-	If($SAMName -ne "fmlast")
+	#Naming Standard FMLLLLLL
+	$initSAM = $global:FirstName.substring(0,1)+$global:MiddleName.substring(0,1)+$global:LastName.substring(0,6)
+	If($global:SAMName -eq "fmlast")
 	{
-		return $SAMName
+		$global:SAMName = $initSAM.tolower()
 	}
-	Else
+	
+	If ($x > 0)
 	{
-		#TODO GENERATE SAM
-		return "fmlast"
+		$numChar = [string]$x | measure-object -character | select -expandproperty characters
+		$global:SAMName = ($initSAM.substring(0,8-$numChar)+$x).tolower()
+	}
+	If(checkExistance($global:SAMName))
+	{
+		generateSam($x++);
 	}
 }
 
@@ -100,13 +122,12 @@ Function generateSam($First, $Middle, $Last)
 # Function: generateFullName
 # Created: [12APR15]
 # Author: Will G
-# Arguments: FirstName, MiddleName, LastName
+# Arguments: None
 # Purpose: Automatically generate the Display Name, and Full Name based on our naming standard
 #*=============================================================================
-Function generateFullName($First, $Middle, $Last)
+Function generateFullName()
 {
-	#TODO
-	return "First M. Last"
+	return $global:First+" "+$global:MiddleName.substring(0,1)+". "+$global:Last
 }
 
 #*=============================================================================
@@ -120,51 +141,86 @@ Function generateFullName($First, $Middle, $Last)
 # =============================================================================
 Function checkInput()
 {
-	If($firstName -eq "First")
+	If($global:firstName -eq "First")
 	{
 		return $FALSE
 	}
-	If($MiddleInital -eq "Middle")
+	Else
 	{
-		$MiddleInital=""
+		$global:firstName = $global:firstName.substring(0,1).toupper()+$global:firstName.substring(1).tolower()
 	}
-	If($LastName -eq "Last")
+	If($MiddleName -eq "Middle")
+	{
+		$MiddleName=""
+	}
+	Else
+	{
+		$global:MiddleName = $global:MiddleName.substring(0,1).toupper()+$global:MiddleName.substring(1).tolower()
+	}
+	If($global:LastName -eq "Last")
 	{
 		return $FALSE
 	}
-	If($OtherName -eq "NickName")
+	Else
+	{
+		$global:LastName = $global:LastName.substring(0,1).toupper()+$global:LastName.substring(1).tolower()
+	}
+	If($global:OtherName -eq "NickName")
 	{
 		return $FALSE
 	}
-	If($OtherName -eq "NickName")
+	Else
 	{
-		return $FALSE
+		$OtherName = $global:OtherName.substring(0,1).toupper()+$global:OtherName.substring(1).tolower()
 	}
-	If($TempPass -eq "P@22word")
+	
+	If($global:TempPass -eq "P@22word")
 	{
+		#I mean it is a temporay password, but lets try to randomly generate them?
 		return $FALSE
 	}
 	return $TRUE
 }
 
 #*=============================================================================
+#* FUNCTION LISTINGS
+#*=============================================================================
+# Function: trap
+# Created: [12APR15]
+# Author: Will G
+# Arguments: 
+# Purpose: To exit the script and return a resonable error message
+# =============================================================================
+trap 
+{ 
+  write-output $_ 
+  exit 1 
+} 
+
+#*=============================================================================
 #* SCRIPT BODY
 #*=============================================================================
 
 #Generate additional information
+If(checkInput() -eq $FALSE)
+{
+	#DIE Input Was Bad!
+	throw 'Bad Input Error'
+}
+
 $HomeFolder = generateHomeFolder()
-$SAMName=generateSam($FirstName,$MiddleInital,$LastName)
-$FullName=generateFullName($FirstName,$MiddleInital,$LastName)
+$SAMName=generateSam()
+$FullName=generateFullName()
 
 #*=============================================================================
 #* Create User Account
 #*=============================================================================
 $NewUser = New-ADUser `
 	-GivenName $FirstName `
-	-Initials $MiddleInital `
+	-Initials $MiddleName `
 	-Surname $LastName `
-	-Name "$FirstName $MiddleInital. $LastName" `
-	-DisplayName "$FirstName $MiddleInital. $LastName" `
+	-Name $FullName `
+	-DisplayName $FullName `
 	-OtherName $OtherName `
 	-SamAccountName $SAMName `
 	-HomeDirectory "$HomeFolder" `
@@ -193,22 +249,21 @@ $NewUser = New-ADUser `
 #*=============================================================================
 #Define FileSystemAccessRights:identifies what type of access we are defining, whether it is Full Access, Read, Write, Modify 
 $FileSystemAccessRights = [System.Security.AccessControl.FileSystemRights]"FullControl" 
- 
+
 #define InheritanceFlags:defines how the security propagates to child objects by default 
 #Very important - so that users have ability to create or delete files or folders in their folders 
 $InheritanceFlags = [System.Security.AccessControl.InheritanceFlags]::"ContainerInherit", "ObjectInherit" 
- 
+
 #Define PropagationFlags: specifies which access rights are inherited from the parent folder (users folder). 
 $PropagationFlags = [System.Security.AccessControl.PropagationFlags]::None 
- 
+
 #Define AccessControlType:defines if the rule created below will be an 'allow' or 'Deny' rule 
 $AccessControl =[System.Security.AccessControl.AccessControlType]::Allow  
 
 #define a new access rule to apply to users folfers 
 $NewAccessrule = New-Object System.Security.AccessControl.FileSystemAccessRule ` 
     ("$Domain\$SAMName", $FileSystemAccessRights, $InheritanceFlags, $PropagationFlags, $AccessControl)  
- 
- 
+
 #set acl for each user folder
 #First, define the folder for each user 
 $userfolder = "$HomeFolder"
