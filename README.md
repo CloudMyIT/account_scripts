@@ -4,6 +4,8 @@ These scripts are used by CloudMy.IT to help automate the process of managing ou
 
 They are used to Create and Delete users, as well as update the expiration date of accounts when they pay each months invoice.
 
+CloudMy.IT LLC uses other scripts found on the internet to create scripts that do what we need. If we used your work, please let us know and we will credit your work to you.
+
 ##Setup
 Before using these scripts we want to ensure you have the correct enviroment setup. 
 
