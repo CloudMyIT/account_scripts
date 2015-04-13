@@ -22,35 +22,22 @@
 #*=============================================================================
 
 #REQUIRED TO BE PASSED
-param([String]$FirstName = "First")
-
-#*=============================================================================
-#* FUNCTION LISTINGS
-#*=============================================================================
-# Function: trap
-# Created: [12APR15]
-# Author: Will G
-# Arguments: 
-# Purpose: To exit the script and return a resonable error message
-# =============================================================================
-trap 
-{ 
-  write-output $_ 
-  exit 1 
-} 
+param([String]$SAMName = "fmlast")
+param([String]$Domain = "cloudmy.it")
+param([String]$OU = "OU=user,OU=accounts,DC=cloudmy,DC=it")
 
 #*=============================================================================
 #* SCRIPT BODY
 #*=============================================================================
 
-"`nAD provider"            
-Get-ChildItem -Filter "(&(objectclass=user)(objectcategory=user)(accountExpires>=1)(accountExpires<=$now))" `
- -Path Ad:\"DC=Manticore,DC=org" -Recurse | foreach {             
- $user = [adsi]"LDAP://$($_.DistinguishedName)"            
- $user | select  @{N="Name"; E={$_.name}}, @{N="DistinguishedName"; E={$_.distinguishedname}},            
- @{N="AccountExpirationDate"; E={([datetime]$_.ConvertLargeIntegerToInt64($_.accountExpires.value)).AddYears(1600)}}            
-} | Format-Table -AutoSize       
+#Get Identity From SAMName
 
+Remove-ADUser `
+	-Identity "$Domain\$SAMName" `
+	-Partition $OU
+
+	#-Credential <PSCredential> `
+	
 #*=============================================================================
 #* END OF SCRIPT: CMIT Delete User
 #*=============================================================================
