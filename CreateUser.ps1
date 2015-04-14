@@ -280,6 +280,12 @@ Set-ACL -path $userfolder -AclObject $currentACL
 
 
 #*=============================================================================
+#* Exchange Mailbox Setup
+#*=============================================================================
+#TODO DEFINE DATABASE/QUOTA FOR MAILBOXES
+Enable-Mailbox -Identity "$Domain\SAMName" -Database Database01
+
+#*=============================================================================
 #* OpenPGP Setup
 #*=============================================================================
 #TODO
