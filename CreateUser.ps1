@@ -277,6 +277,19 @@ $currentACL.SetAccessRule($NewAccessrule)
 
 #Write the changes to the user folder 
 Set-ACL -path $userfolder -AclObject $currentACL
+
+
+#*=============================================================================
+#* OpenPGP Setup
+#*=============================================================================
+#TODO
+#Place Script in Users Login Scripts Directory
+
+#Import the key into Kleopatra For Future Use
+.\kleopatra -i PrivateKey.gpg
+
+
+
 #*=============================================================================
 #* END OF SCRIPT: CMIT Create User
 #*=============================================================================

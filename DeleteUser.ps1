@@ -29,14 +29,26 @@ param([String]$OU = "OU=user,OU=accounts,DC=cloudmy,DC=it")
 #*=============================================================================
 #* SCRIPT BODY
 #*=============================================================================
+$DirectoryEntry = New-Object System.DirectoryServices.DirectoryEntry($OU)
+$DirectorySearcher = New-Object System.DirectoryServices.DirectorySearcher 
 
 #Get Identity From SAMName
+$UserName = $Domain+"\"+$SAMName
 
-Remove-ADUser `
-	-Identity "$Domain\$SAMName" `
-	-Partition $OU
+$SearchFilter = "(&(objectClass=user)(sAMAccountName= $UserName))"
+[void]$DirectorySearcher.PropertiesToLoad.Add('homeDirectory') 
 
-	#-Credential <PSCredential> `
+$DirectorySearcher.Filter = $SearchFilter
+$DirectorySearcher.SearchScope = "Subtree"
+
+$Account = $DirectorySearcher.FindOne() 
+$Account 
+
+$User = [adsi]"$($Account.Properties.adspath)" 
+$User 
+$User.DeleteTree() 
+Remove-Item -Path $Account.Properties.homedirectory -Recurse -Force 
+
 	
 #*=============================================================================
 #* END OF SCRIPT: CMIT Delete User
