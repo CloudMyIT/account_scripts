@@ -269,7 +269,7 @@ $NewUser = New-ADUser `
 	-DisplayName $FullName `
 	-OtherName $OtherName `
 	-SamAccountName $SAMName `
-    -Name $SAMName `
+	-Name $SAMName `
 	-HomeDirectory "$HomeFolder" `
 	-ProfilePath "$HomeFolder\_sys\$SAMName.pds" `
 	-HomeDrive "U:" `
