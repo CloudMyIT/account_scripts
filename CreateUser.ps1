@@ -20,18 +20,20 @@
 #* Solution:
 #*
 #*=============================================================================
-
 #REQUIRED TO BE PASSED
-param([String]$FirstName = "First")
-param([String]$MiddleName = "Middle")
-param([String]$LastName = "Last")
-param([String]$OtherName = "NickName")
-param([String]$TempPass = "P@22word")
-#OPTIONAL TO BE PASSED We Assume you don't know about them...
-param([String]$Domain = "cloudmy.it")
-param([String]$OU = "OU=user,OU=accounts,DC=cloudmy,DC=it")
-param([String]$Quota = "NULL")
-param([String]$SAMName = "fmlast")
+
+param(
+    [String]$FirstName = "First",
+    [String]$MiddleName = "Middle",
+    [String]$LastName = "Last",
+    [String]$OtherName = "NickName",
+    [String]$TempPass = "P@22word",
+    [String]$Domain = "cloudmy.it",
+    [String]$OU = "OU=user,OU=accounts,DC=cloudmy,DC=it",
+    [String]$Quota = "10G",
+    [String]$EmailQuota = "1G",
+    [String]$SAMName = "fmlast"
+)
 
 #This would be the Account that will create the New User
 #$AdminCredentials = Get-Credential "$Domain\SERVICE_ACCT"
@@ -97,24 +99,53 @@ Function generateHomeFolder()
 # Arguments: None
 # Purpose: Automatically generate the SamAccountName for a user based on our naming standard
 #*=============================================================================
-Function generateSam($x=0)
+Function generateSam([int]$x)
 {
-	#Naming Standard FMLLLLLL
-	$initSAM = $global:FirstName.substring(0,1)+$global:MiddleName.substring(0,1)+$global:LastName.substring(0,6)
+	#Naming Standard
+    $initSAM = ""
+    If($global:FirstName.Length -ge 1)
+    {
+        $initSAM = $global:FirstName.substring(0,1)
+    }
+    If($global:MiddleName.Length -ge 1)
+    {
+        $initSAM = $initSAM +$global:MiddleName.substring(0,1)
+    }
+    If($global:LastName.Length -ge 6)
+    {
+        $initSAM = $initSAM + $global:LastName.substring(0,6)
+    }
+    Else
+    {
+         $initSAM = $initSAM + $global:LastName
+    }
+
+    Write-Host $initSAM
 	If($global:SAMName -eq "fmlast")
 	{
 		$global:SAMName = $initSAM.tolower()
 	}
 	
-	If ($x > 0)
+	If ($x -gt 0)
 	{
 		$numChar = [string]$x | measure-object -character | select -expandproperty characters
-		$global:SAMName = ($initSAM.substring(0,8-$numChar)+$x).tolower()
+        If($initSAM.length -gt 8-$numChar)
+        {
+		    $global:SAMName = ($initSAM.substring(0,8-$numChar)+$x).tolower()
+        }
+        Else
+        {
+            $global:SAMName = ($initSAM+$x).tolower()
+        }
 	}
 	If(checkExistance($global:SAMName))
 	{
-		generateSam($x++);
+		generateSam($x+1);
 	}
+    Else
+    {
+        return $global:SAMName
+    }
 }
 
 #*=============================================================================
@@ -128,7 +159,14 @@ Function generateSam($x=0)
 #*=============================================================================
 Function generateFullName()
 {
-	return $global:First+" "+$global:MiddleName.substring(0,1)+". "+$global:Last
+    if($global:MiddleName -ge 1)
+    {
+	    return [string] $global:FirstName + " " + $global:MiddleName.Substring(0,1) + ". " + $global:LastName
+    }
+    Else
+    {
+        return [string] $global:FirstName + " " + $global:MiddleName + ". " + $global:LastName
+    }
 }
 
 #*=============================================================================
@@ -156,7 +194,7 @@ Function checkInput()
 	}
 	Else
 	{
-		$global:MiddleName = $global:MiddleName.substring(0,1).toupper()+$global:MiddleName.substring(1).tolower()
+		$global:MiddleName = $global:MiddleName.substring(0,1).toupper()
 	}
 	If($global:LastName -eq "Last")
 	{
@@ -203,37 +241,47 @@ trap
 #*=============================================================================
 
 #Generate additional information
-If(checkInput() -eq $FALSE)
+If(checkInput -eq $FALSE)
 {
 	#DIE Input Was Bad!
 	throw 'Bad Input Error'
 }
 
-$HomeFolder = generateHomeFolder()
-$SAMName=generateSam()
-$FullName=generateFullName()
+#Must Be First!
+$SAMName=generateSam
+$FullName=generateFullName
+
+#Must Be After generateSam
+$HomeFolder = generateHomeFolder
 
 #*=============================================================================
 #* Create User Account
 #*=============================================================================
+
+Write-Host $FirstName $MiddleName $LastName
+
+write-host $SAMName
+
 $NewUser = New-ADUser `
 	-GivenName $FirstName `
 	-Initials $MiddleName `
 	-Surname $LastName `
-	-Name $FullName `
 	-DisplayName $FullName `
 	-OtherName $OtherName `
 	-SamAccountName $SAMName `
+    -Name $SAMName `
 	-HomeDirectory "$HomeFolder" `
 	-ProfilePath "$HomeFolder\_sys\$SAMName.pds" `
 	-HomeDrive "U:" `
 	-Path $OU `
+	-UserPrincipalName "$SAMName@$Domain"
+	-EmailAddress "$SAMName@$Domain"
 	-AccountPassword (Read-Host -AsSecureString $TempPass) `
 	-AllowReversiblePasswordEncryption $false `
 	-CannotChangePassword $false `
 	-ChangePasswordAtLogon $true `
 	-Enabled $true `
-	-PassThru $true `
+	-PassThru `
 	-PasswordNeverExpires $false `
 	-PasswordNotRequired $false `
 	-SmartcardLogonRequired $false `
@@ -244,57 +292,62 @@ $NewUser = New-ADUser `
 #-AccountExpirationDate <System.NullableSystem.DateTime> `
 #-Credential $AdminCredentials `
 
-
 #*=============================================================================
 #* Create Home Folder, Set Permissions
 #*=============================================================================
+New-Item -ItemType Directory -Force -Path $HomeFolder
 #Define FileSystemAccessRights:identifies what type of access we are defining, whether it is Full Access, Read, Write, Modify 
 $FileSystemAccessRights = [System.Security.AccessControl.FileSystemRights]"FullControl" 
-
 #define InheritanceFlags:defines how the security propagates to child objects by default 
 #Very important - so that users have ability to create or delete files or folders in their folders 
 $InheritanceFlags = [System.Security.AccessControl.InheritanceFlags]::"ContainerInherit", "ObjectInherit" 
-
 #Define PropagationFlags: specifies which access rights are inherited from the parent folder (users folder). 
 $PropagationFlags = [System.Security.AccessControl.PropagationFlags]::None 
-
 #Define AccessControlType:defines if the rule created below will be an 'allow' or 'Deny' rule 
 $AccessControl =[System.Security.AccessControl.AccessControlType]::Allow  
-
 #define a new access rule to apply to users folfers 
-$NewAccessrule = New-Object System.Security.AccessControl.FileSystemAccessRule ` 
-    ("$Domain\$SAMName", $FileSystemAccessRights, $InheritanceFlags, $PropagationFlags, $AccessControl)  
-
-#set acl for each user folder
-#First, define the folder for each user 
-$userfolder = "$HomeFolder"
-
+$NewAccessrule = New-Object System.Security.AccessControl.FileSystemAccessRule("$Domain\$SAMName", $FileSystemAccessRights, $InheritanceFlags, $PropagationFlags, $AccessControl)  
 #Get the current ACL for the folder
-$currentACL = Get-ACL -path $userfolder 
-
+$currentACL = Get-ACL -path $HomeFolder 
 #Add this access rule to the ACL 
 $currentACL.SetAccessRule($NewAccessrule) 
-
 #Write the changes to the user folder 
-Set-ACL -path $userfolder -AclObject $currentACL
-
-
-#*=============================================================================
-#* Exchange Mailbox Setup
-#*=============================================================================
-#TODO DEFINE DATABASE/QUOTA FOR MAILBOXES
-Enable-Mailbox -Identity "$Domain\SAMName" -Database Database01
+Set-ACL -path $HomeFolder -AclObject $currentACL
 
 #*=============================================================================
-#* OpenPGP Setup
+#* Create CMIT Scripts Folder
 #*=============================================================================
-#TODO
-#Place Script in Users Login Scripts Directory
+New-Item -ItemType Directory -Force -Path $HomeFolder/_sys/scripts
+#Define FileSystemAccessRights:identifies what type of access we are defining, whether it is Full Access, Read, Write, Modify 
+$FileSystemAccessRights = [System.Security.AccessControl.FileSystemRights]"Write" 
+#define InheritanceFlags:defines how the security propagates to child objects by default 
+#Very important - so that users have ability to create or delete files or folders in their folders 
+$InheritanceFlags = [System.Security.AccessControl.InheritanceFlags]::"ContainerInherit", "ObjectInherit" 
+#Define PropagationFlags: specifies which access rights are inherited from the parent folder (users folder). 
+$PropagationFlags = [System.Security.AccessControl.PropagationFlags]::None 
+#Define AccessControlType:defines if the rule created below will be an 'allow' or 'Deny' rule 
+$AccessControl =[System.Security.AccessControl.AccessControlType]::Deny 
+#define a new access rule to apply to users folfers 
+#TODO USE SERVICE ACCOUNT
+$NewAccessrule = New-Object System.Security.AccessControl.FileSystemAccessRule("$Domain\$SAMName", $FileSystemAccessRights, $InheritanceFlags, $PropagationFlags, $AccessControl)  
+#Get the current ACL for the folder
+$currentACL = Get-ACL -path $HomeFolder/_sys/scripts 
+#Add this access rule to the ACL 
+$currentACL.SetAccessRule($NewAccessrule) 
+#Write the changes to the user folder 
+Set-ACL -path $HomeFolder/_sys/scripts -AclObject $currentACL
 
-#Import the key into Kleopatra For Future Use
-.\kleopatra -i PrivateKey.gpg
-
-
+#*=============================================================================
+#* Start Exchange Mailbox Setup
+#*=============================================================================
+$UserCredential = Get-Credential
+$Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri http://dc1-msmr-t1.cloudmy.it/PowerShell/ -Authentication Kerberos -Credential $UserCredential
+Import-PSSession $Session
+Enable-Mailbox -Identity "$Domain\$SAMName" -Database $EmailQuota
+Remove-PSSession $Session
+#*=============================================================================
+#* Finish Exchange Mailbox Setup
+#*=============================================================================
 
 #*=============================================================================
 #* END OF SCRIPT: CMIT Create User
